@@ -210,12 +210,8 @@ sentry {
 }
 
 configurations.all {
-    resolutionStrategy {
-        dependencySubstitution {
-            substitute module('com.caverock:androidsvg:1.4') using module('com.caverock:androidsvg-aar:1.4')
-        }
-    }
     exclude group: 'com.caverock', module: 'androidsvg'
+    exclude group: 'com.caverock', module: 'androidsvg-aar'
 }
 
 dependencies {
