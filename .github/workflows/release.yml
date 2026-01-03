@@ -22,16 +22,29 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
         
-      - name: Build app
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean
+        
+      - name: Build Android APK
         run: |
-          npm run build
+          cd android
+          ./gradlew assembleRelease
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            android/app/build/outputs/apk/release/*.apk
-          body_path: ALPHA_BUILD_2_ANNOUNCEMENT.md
+           android/app/build/outputs/apk/release/*.apk
           draft: true
           prerelease: true
-          generate_release_notes: true 
+          generate_release_notes: true
+            android/app/build/outputs/apk/release/*.apk
+          draft: true
+          prerelease: true
+          generate_release_notes: true
