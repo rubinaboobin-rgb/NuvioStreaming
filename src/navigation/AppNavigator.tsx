@@ -17,6 +17,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { useTheme } from '../contexts/ThemeContext';
 import { PostHogProvider } from 'posthog-react-native';
 import { ScrollToTopProvider, useScrollToTopEmitter } from '../contexts/ScrollToTopContext';
+import { isAndroidTV } from '../hooks/useTVDevice';
+import TVTabLayout from '../components/navigation/TVTabLayout';
 
 // Optional iOS Glass effect (expo-glass-effect) with safe fallback
 let GlassViewComp: any = null;
@@ -549,6 +551,18 @@ const MainTabs = () => {
   const { settings } = require('../hooks/useSettings');
   const { useSettings: useSettingsHook } = require('../hooks/useSettings');
   const { settings: appSettings } = useSettingsHook();
+
+  // Check if running on Android TV - render TV-specific layout
+  const isTVDevice = isAndroidTV() || appSettings?.forceTVMode;
+  if (isTVDevice && Platform.OS === 'android') {
+    return (
+      <TVTabLayout
+        initialRoute="Home"
+        enableDownloads={appSettings?.enableDownloads !== false}
+      />
+    );
+  }
+
   const [hasUpdateBadge, setHasUpdateBadge] = React.useState(false);
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
 

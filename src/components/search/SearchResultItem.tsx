@@ -14,6 +14,8 @@ import { StreamingContent, catalogService } from '../../services/catalogService'
 import { mmkvStorage } from '../../services/mmkvStorage';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSettings } from '../../hooks/useSettings';
+import { useTVDevice } from '../../hooks/useTVDevice';
+import TVFocusable from '../ui/TVFocusable';
 import {
     HORIZONTAL_ITEM_WIDTH,
     HORIZONTAL_POSTER_HEIGHT,
@@ -45,6 +47,7 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = React.memo(({
 }) => {
     const { currentTheme } = useTheme();
     const { settings } = useSettings();
+    const { isTVDevice } = useTVDevice();
     const [inLibrary, setInLibrary] = useState(!!item.inLibrary);
     const [watched, setWatched] = useState(false);
 
@@ -95,18 +98,9 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = React.memo(({
 
     const borderRadius = settings.posterBorderRadius ?? 12;
 
-    return (
-        <TouchableOpacity
-            style={[
-                styles.horizontalItem,
-                { width: itemWidth },
-                isGrid && styles.discoverGridItem
-            ]}
-            onPress={() => onPress(item)}
-            onLongPress={() => onLongPress(item)}
-            delayLongPress={300}
-            activeOpacity={0.7}
-        >
+    // Shared poster content
+    const posterContent = (
+        <>
             <View style={[styles.horizontalItemPosterContainer, {
                 width: itemWidth,
                 height: undefined,
@@ -152,6 +146,40 @@ export const SearchResultItem: React.FC<SearchResultItemProps> = React.memo(({
                     {item.year}
                 </Text>
             )}
+        </>
+    );
+
+    // TV: Use TVFocusable for D-pad navigation
+    if (isTVDevice) {
+        return (
+            <TVFocusable
+                onPress={() => onPress(item)}
+                onLongPress={() => onLongPress(item)}
+                style={[
+                    styles.horizontalItem,
+                    { width: itemWidth },
+                    isGrid && styles.discoverGridItem
+                ]}
+            >
+                {posterContent}
+            </TVFocusable>
+        );
+    }
+
+    // Mobile: Standard TouchableOpacity
+    return (
+        <TouchableOpacity
+            style={[
+                styles.horizontalItem,
+                { width: itemWidth },
+                isGrid && styles.discoverGridItem
+            ]}
+            onPress={() => onPress(item)}
+            onLongPress={() => onLongPress(item)}
+            delayLongPress={300}
+            activeOpacity={0.7}
+        >
+            {posterContent}
         </TouchableOpacity>
     );
 });

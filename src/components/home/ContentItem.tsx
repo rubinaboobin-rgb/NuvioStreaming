@@ -13,6 +13,8 @@ import { storageService } from '../../services/storageService';
 import { TraktService } from '../../services/traktService';
 import { useTraktContext } from '../../contexts/TraktContext';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useTVDevice } from '../../hooks/useTVDevice';
+import TVFocusable from '../ui/TVFocusable';
 
 interface ContentItemProps {
   item: StreamingContent;
@@ -58,10 +60,6 @@ const calculatePosterLayout = (screenWidth: number) => {
   };
 
   for (let n = 3; n <= 6; n++) {
-    // Calculate poster width needed for N full posters + 0.25 partial poster
-    // Formula: N * posterWidth + (N-1) * spacing + 0.25 * posterWidth = availableWidth - rightPadding
-    // Simplified: posterWidth * (N + 0.25) + (N-1) * spacing = availableWidth - rightPadding
-    // We'll use minimal right padding (8px) to maximize space
     const usableWidth = availableWidth - 8;
     const posterWidth = (usableWidth - (n - 1) * SPACING) / (n + 0.25);
 
@@ -91,7 +89,7 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
       const found = items.find((libItem) => libItem.id === item.id && libItem.type === item.type);
       const newInLibrary = !!found;
       // Only update state if the value actually changed to prevent unnecessary re-renders
-      setInLibrary(prev => prev !== newInLibrary ? newInLibrary : prev);
+      setInLibrary((prev: boolean) => prev !== newInLibrary ? newInLibrary : prev);
     });
     return () => unsubscribe();
   }, [item.id, item.type]);
@@ -121,7 +119,9 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
   const { currentTheme } = useTheme();
   const { settings, isLoaded } = useSettings();
   const { showSuccess, showInfo } = useToast();
+  const { isTVDevice } = useTVDevice();
   const posterRadius = typeof settings.posterBorderRadius === 'number' ? settings.posterBorderRadius : 12;
+
   // Memoize poster width calculation to avoid recalculating on every render
   const posterWidth = React.useMemo(() => {
     const deviceType = getDeviceType(width);
@@ -299,70 +299,87 @@ const ContentItem = ({ item, onPress, shouldLoadImage: shouldLoadImageProp, defe
     );
   }
 
+  // Shared poster content
+  const posterContent = (
+    <View ref={itemRef} style={[styles.contentItemContainer, { borderRadius }]}>
+      {/* Image with FastImage for aggressive caching */}
+      {item.poster ? (
+        <FastImage
+          source={{
+            uri: optimizedPosterUrl,
+            priority: FastImage.priority.normal,
+            cache: FastImage.cacheControl.immutable
+          }}
+          style={[styles.poster, { backgroundColor: currentTheme.colors.elevation1, borderRadius }]}
+          resizeMode={FastImage.resizeMode.cover}
+          onLoad={() => {
+            setImageError(false);
+          }}
+          onError={() => {
+            if (__DEV__) console.warn('Image load error for:', item.poster);
+            setImageError(true);
+          }}
+        />
+      ) : (
+        // Show placeholder for items without posters
+        <View style={[styles.poster, { backgroundColor: currentTheme.colors.elevation1, justifyContent: 'center', alignItems: 'center', borderRadius: posterRadius }]}>
+          <Text style={{ color: currentTheme.colors.textMuted, fontSize: 10, textAlign: 'center' }}>
+            {item.name.substring(0, 20)}...
+          </Text>
+        </View>
+      )}
+      {imageError && (
+        <View style={[styles.loadingOverlay, { backgroundColor: currentTheme.colors.elevation1 }]}>
+          <MaterialIcons name="broken-image" size={24} color={currentTheme.colors.textMuted} />
+        </View>
+      )}
+      {isWatched && (
+        <View style={styles.watchedIndicator}>
+          <MaterialIcons name="check-circle" size={22} color={currentTheme.colors.success} />
+        </View>
+      )}
+      {inLibrary && (
+        <View style={styles.libraryBadge}>
+          <Feather name="bookmark" size={16} color={currentTheme.colors.white} />
+        </View>
+      )}
+      {isAuthenticated && isInWatchlist(item.id, item.type as 'movie' | 'show') && (
+        <View style={styles.traktWatchlistIcon}>
+          <MaterialIcons name="playlist-add-check" size={16} color="#E74C3C" />
+        </View>
+      )}
+      {isAuthenticated && isInCollection(item.id, item.type as 'movie' | 'show') && (
+        <View style={styles.traktCollectionIcon}>
+          <MaterialIcons name="video-library" size={16} color="#3498DB" />
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <>
       <Animated.View style={[styles.itemContainer, { width: finalWidth }]} entering={FadeIn.duration(300)}>
-        <TouchableOpacity
-          style={[styles.contentItem, { width: finalWidth, aspectRatio: finalAspectRatio, borderRadius }]}
-          activeOpacity={0.7}
-          onPress={handlePress}
-          onLongPress={handleLongPress}
-          delayLongPress={300}
-        >
-          <View ref={itemRef} style={[styles.contentItemContainer, { borderRadius }]}>
-            {/* Image with FastImage for aggressive caching */}
-            {item.poster ? (
-              <FastImage
-                source={{
-                  uri: optimizedPosterUrl,
-                  priority: FastImage.priority.normal,
-                  cache: FastImage.cacheControl.immutable
-                }}
-                style={[styles.poster, { backgroundColor: currentTheme.colors.elevation1, borderRadius }]}
-                resizeMode={FastImage.resizeMode.cover}
-                onLoad={() => {
-                  setImageError(false);
-                }}
-                onError={() => {
-                  if (__DEV__) console.warn('Image load error for:', item.poster);
-                  setImageError(true);
-                }}
-              />
-            ) : (
-              // Show placeholder for items without posters
-              <View style={[styles.poster, { backgroundColor: currentTheme.colors.elevation1, justifyContent: 'center', alignItems: 'center', borderRadius: posterRadius }]}>
-                <Text style={{ color: currentTheme.colors.textMuted, fontSize: 10, textAlign: 'center' }}>
-                  {item.name.substring(0, 20)}...
-                </Text>
-              </View>
-            )}
-            {imageError && (
-              <View style={[styles.loadingOverlay, { backgroundColor: currentTheme.colors.elevation1 }]}>
-                <MaterialIcons name="broken-image" size={24} color={currentTheme.colors.textMuted} />
-              </View>
-            )}
-            {isWatched && (
-              <View style={styles.watchedIndicator}>
-                <MaterialIcons name="check-circle" size={22} color={currentTheme.colors.success} />
-              </View>
-            )}
-            {inLibrary && (
-              <View style={styles.libraryBadge}>
-                <Feather name="bookmark" size={16} color={currentTheme.colors.white} />
-              </View>
-            )}
-            {isAuthenticated && isInWatchlist(item.id, item.type as 'movie' | 'show') && (
-              <View style={styles.traktWatchlistIcon}>
-                <MaterialIcons name="playlist-add-check" size={16} color="#E74C3C" />
-              </View>
-            )}
-            {isAuthenticated && isInCollection(item.id, item.type as 'movie' | 'show') && (
-              <View style={styles.traktCollectionIcon}>
-                <MaterialIcons name="video-library" size={16} color="#3498DB" />
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+        {isTVDevice ? (
+          // TV: Use TVFocusable wrapper for D-pad navigation
+          <TVFocusable
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+            style={[styles.contentItem, { width: finalWidth, aspectRatio: finalAspectRatio, borderRadius }]}
+          >
+            {posterContent}
+          </TVFocusable>
+        ) : (
+          // Mobile: Standard TouchableOpacity
+          <TouchableOpacity
+            style={[styles.contentItem, { width: finalWidth, aspectRatio: finalAspectRatio, borderRadius }]}
+            activeOpacity={0.7}
+            onPress={handlePress}
+            onLongPress={handleLongPress}
+            delayLongPress={300}
+          >
+            {posterContent}
+          </TouchableOpacity>
+        )}
         {settings.showPosterTitles && (
           <Text
             style={[

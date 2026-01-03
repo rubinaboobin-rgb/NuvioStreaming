@@ -26,6 +26,7 @@ import { useTraktAutosync } from '../../hooks/useTraktAutosync';
 import { useMetadata } from '../../hooks/useMetadata';
 import { usePlayerGestureControls } from '../../hooks/usePlayerGestureControls';
 import { useSettings } from '../../hooks/useSettings';
+import { useTVDevice, TV_REMOTE_KEYS, TVRemoteEvent } from '../../hooks/useTVDevice';
 
 // Shared Components
 import { GestureControls, PauseOverlay, SpeedActivatedOverlay } from './components';
@@ -149,18 +150,18 @@ const AndroidVideoPlayer: React.FC = () => {
 
   // Track previous video session to reset subtitle offset only when video actually changes
   const previousVideoRef = useRef<{ uri?: string; episodeId?: string }>({});
-  
+
   // Reset subtitle offset when starting a new video session
   useEffect(() => {
     const currentVideo = { uri, episodeId };
     const previousVideo = previousVideoRef.current;
-    
+
     // Only reset if this is actually a new video (uri or episodeId changed)
-    if (previousVideo.uri !== undefined && 
-        (previousVideo.uri !== currentVideo.uri || previousVideo.episodeId !== currentVideo.episodeId)) {
+    if (previousVideo.uri !== undefined &&
+      (previousVideo.uri !== currentVideo.uri || previousVideo.episodeId !== currentVideo.episodeId)) {
       setSubtitleOffsetSec(0);
     }
-    
+
     // Update the ref for next comparison
     previousVideoRef.current = currentVideo;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,6 +224,13 @@ const AndroidVideoPlayer: React.FC = () => {
   });
 
   const nextEpisodeHook = useNextEpisode(type, season, episode, groupedEpisodes, (metadataResult as any)?.groupedEpisodes, episodeId);
+
+  // TV Device Detection and D-pad Controls
+  const { isTVDevice, useRemoteHandler } = useTVDevice();
+
+  // D-pad seek amounts in seconds
+  const TV_SEEK_SMALL = 10; // Left/Right arrow
+  const TV_SEEK_LARGE = 30; // Fast forward/Rewind buttons
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -505,6 +513,65 @@ const AndroidVideoPlayer: React.FC = () => {
     if (navigation.canGoBack()) navigation.goBack();
     else navigation.reset({ index: 0, routes: [{ name: 'Home' }] } as any);
   }, [navigation]);
+
+  // TV Remote D-pad Event Handler - placed after handleClose for proper reference order
+  useRemoteHandler(useCallback((event: TVRemoteEvent) => {
+    if (!playerState.isMounted.current) return;
+
+    switch (event.eventType) {
+      case TV_REMOTE_KEYS.SELECT:
+      case TV_REMOTE_KEYS.PLAY_PAUSE:
+        // Toggle play/pause
+        controlsHook.togglePlayback();
+        // Show controls briefly
+        playerState.setShowControls(true);
+        break;
+
+      case TV_REMOTE_KEYS.LEFT:
+        // Seek backward 10 seconds
+        controlsHook.skip(-TV_SEEK_SMALL);
+        playerState.setShowControls(true);
+        break;
+
+      case TV_REMOTE_KEYS.RIGHT:
+        // Seek forward 10 seconds
+        controlsHook.skip(TV_SEEK_SMALL);
+        playerState.setShowControls(true);
+        break;
+
+      case TV_REMOTE_KEYS.REWIND:
+        // Seek backward 30 seconds
+        controlsHook.skip(-TV_SEEK_LARGE);
+        playerState.setShowControls(true);
+        break;
+
+      case TV_REMOTE_KEYS.FAST_FORWARD:
+        // Seek forward 30 seconds
+        controlsHook.skip(TV_SEEK_LARGE);
+        playerState.setShowControls(true);
+        break;
+
+      case TV_REMOTE_KEYS.UP:
+      case TV_REMOTE_KEYS.DOWN:
+        // Toggle controls visibility for navigation
+        playerState.setShowControls((prev: boolean) => !prev);
+        break;
+
+      case TV_REMOTE_KEYS.BACK:
+        // Close player
+        handleClose();
+        break;
+
+      case TV_REMOTE_KEYS.MENU:
+        // Show episode/source selection if available
+        if (type === 'series') {
+          modals.setShowEpisodesModal(true);
+        } else {
+          modals.setShowSourcesModal(true);
+        }
+        break;
+    }
+  }, [controlsHook, playerState, handleClose, type, modals]));
 
   // Handle codec errors from ExoPlayer - silently switch to MPV
   const handleCodecError = useCallback(() => {
@@ -842,21 +909,24 @@ const AndroidVideoPlayer: React.FC = () => {
           controlsVisible={playerState.showControls}
           controlsExtraOffset={100}
         />
-        <GestureControls
-          screenDimensions={playerState.screenDimensions}
-          gestureControls={gestureControls}
-          onLongPressActivated={speedControl.activateSpeedBoost}
-          onLongPressEnd={speedControl.deactivateSpeedBoost}
-          onLongPressStateChange={(e) => {
-            if (e.nativeEvent.state !== 4 && e.nativeEvent.state !== 2) speedControl.deactivateSpeedBoost();
-          }}
-          toggleControls={toggleControls}
-          showControls={playerState.showControls}
-          hideControls={hideControls}
-          volume={volume}
-          brightness={brightness}
-          controlsTimeout={controlsTimeout}
-        />
+        {/* Gesture controls - disabled on TV (use D-pad instead) */}
+        {!isTVDevice && (
+          <GestureControls
+            screenDimensions={playerState.screenDimensions}
+            gestureControls={gestureControls}
+            onLongPressActivated={speedControl.activateSpeedBoost}
+            onLongPressEnd={speedControl.deactivateSpeedBoost}
+            onLongPressStateChange={(e) => {
+              if (e.nativeEvent.state !== 4 && e.nativeEvent.state !== 2) speedControl.deactivateSpeedBoost();
+            }}
+            toggleControls={toggleControls}
+            showControls={playerState.showControls}
+            hideControls={hideControls}
+            volume={volume}
+            brightness={brightness}
+            controlsTimeout={controlsTimeout}
+          />
+        )}
 
         <PlayerControls
           showControls={playerState.showControls}
@@ -894,7 +964,7 @@ const AndroidVideoPlayer: React.FC = () => {
           isSubtitleModalOpen={modals.showSubtitleModal}
           setShowSourcesModal={modals.setShowSourcesModal}
           setShowEpisodesModal={type === 'series' ? modals.setShowEpisodesModal : undefined}
-          onSliderValueChange={(val) => { playerState.isDragging.current = true; playerState.setCurrentTime(val); }}
+          onSliderValueChange={(val) => { playerState.isDragging.current = true; }}
           onSlidingStart={() => { playerState.isDragging.current = true; }}
           onSlidingComplete={(val) => {
             playerState.isDragging.current = false;

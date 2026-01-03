@@ -110,6 +110,8 @@ export interface AppSettings {
   preferredAudioLanguage: string; // Preferred language for audio tracks (ISO 639-1 code)
   subtitleSourcePreference: 'internal' | 'external' | 'any'; // Prefer internal (embedded), external (addon), or any
   enableSubtitleAutoSelect: boolean; // Auto-select subtitles based on preferences
+  // Android TV settings
+  forceTVMode: boolean; // Force TV UI mode for testing on non-TV devices
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -193,6 +195,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   preferredAudioLanguage: 'en', // Default to English audio
   subtitleSourcePreference: 'internal', // Prefer internal/embedded subtitles first
   enableSubtitleAutoSelect: true, // Auto-select subtitles by default
+  // Android TV settings
+  forceTVMode: false, // Disabled by default, enable for testing TV UI on phone/tablet
 };
 
 const SETTINGS_STORAGE_KEY = 'app_settings';

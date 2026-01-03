@@ -20,6 +20,7 @@ import FastImage from '@d11/react-native-fast-image';
 import LottieView from 'lottie-react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSettings, DEFAULT_SETTINGS } from '../hooks/useSettings';
+import { isAndroidTV } from '../hooks/useTVDevice';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { stremioService } from '../services/stremioService';
 import { useCatalogContext } from '../contexts/CatalogContext';
@@ -53,6 +54,7 @@ const SETTINGS_CATEGORIES = [
   { id: 'appearance', title: 'Appearance', icon: 'sliders' as string },
   { id: 'integrations', title: 'Integrations', icon: 'layers' as string },
   { id: 'playback', title: 'Playback', icon: 'play-circle' as string },
+  { id: 'tv', title: 'TV Settings', icon: 'tv' as string },
   { id: 'backup', title: 'Backup & Restore', icon: 'archive' as string },
   { id: 'updates', title: 'Updates', icon: 'refresh-ccw' as string },
   { id: 'about', title: 'About', icon: 'info' as string },
@@ -487,6 +489,32 @@ const SettingsScreen: React.FC = () => {
           </SettingsCard>
         );
 
+      case 'tv':
+        return (
+          <SettingsCard title="TV SETTINGS" isTablet={isTablet}>
+            <SettingItem
+              title="Force TV Mode"
+              description={isAndroidTV() ? "Running on Android TV" : "Enable to test TV UI on mobile"}
+              icon="tv"
+              renderControl={() => (
+                <CustomSwitch
+                  value={settings.forceTVMode}
+                  onValueChange={(value) => updateSetting('forceTVMode', value)}
+                />
+              )}
+              isTablet={isTablet}
+            />
+            <SettingItem
+              title="TV Navigation"
+              description="Left-side rail replaces bottom tabs"
+              icon="sidebar"
+              disabled
+              isLast={true}
+              isTablet={isTablet}
+            />
+          </SettingsCard>
+        );
+
       default:
         return null;
     }
@@ -611,6 +639,19 @@ const SettingsScreen: React.FC = () => {
                       icon="play-circle"
                       renderControl={() => <ChevronRight />}
                       onPress={() => navigation.navigate('PlaybackSettings')}
+                    />
+                  )}
+                  {Platform.OS === 'android' && (
+                    <SettingItem
+                      title="TV Settings"
+                      description={isAndroidTV() ? "Running on TV" : "Force TV mode"}
+                      icon="tv"
+                      renderControl={() => (
+                        <CustomSwitch
+                          value={settings.forceTVMode}
+                          onValueChange={(value: boolean) => updateSetting('forceTVMode', value)}
+                        />
+                      )}
                       isLast
                     />
                   )}
