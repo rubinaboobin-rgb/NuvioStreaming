@@ -28,9 +28,16 @@ allprojects {
     maven { url 'https://www.jitpack.io' }
   }
   
-  // Exclude duplicate androidsvg dependency
+  // Force resolution of androidsvg to a single version
   configurations.all {
-    exclude group: 'com.caverock', module: 'androidsvg-aar'
+    resolutionStrategy {
+      // Substitute the JAR version with the AAR version
+      dependencySubstitution {
+        substitute module('com.caverock:androidsvg:1.4') using module('com.caverock:androidsvg-aar:1.4')
+      }
+    }
+    // Also exclude the JAR variant entirely
+    exclude group: 'com.caverock', module: 'androidsvg'
   }
 }
 
