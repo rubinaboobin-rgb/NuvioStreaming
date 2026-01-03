@@ -210,7 +210,7 @@ sentry {
 }
 
 configurations.all {
-    exclude group: 'com.caverock', module: 'androidsvg'
+    exclude group: 'com.caverock', module: 'androidsvg-aar'
 }
 
 dependencies {

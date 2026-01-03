@@ -28,9 +28,9 @@ allprojects {
     maven { url 'https://www.jitpack.io' }
   }
   
-  // Exclude duplicate androidsvg dependency (use AAR only)
+  // Exclude duplicate androidsvg dependency
   configurations.all {
-    exclude group: 'com.caverock', module: 'androidsvg'
+    exclude group: 'com.caverock', module: 'androidsvg-aar'
   }
 }
 
