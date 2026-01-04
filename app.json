@@ -8,7 +8,7 @@
     "icon": "./assets/ios/AppIcon.appiconset/Icon-App-60x60@3x.png",
     "userInterfaceStyle": "dark",
     "scheme": "nuvio",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./src/assets/splash-icon-new.png",
       "resizeMode": "contain",
