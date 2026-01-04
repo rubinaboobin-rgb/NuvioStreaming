@@ -27,20 +27,24 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-          
-      - name: Prebuild Android
-        run: npx expo prebuild --platform android --clean
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Skip expo prebuild - use existing android folder from repo
+      # This preserves our gradle fixes for duplicate class issues
         
       - name: Build Android APK
         run: |
           cd android
-          ./gradlew assembleRelease
+          chmod +x gradlew
+          ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a
           
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-           android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/release/*.apk
           draft: true
           prerelease: true
           generate_release_notes: true
