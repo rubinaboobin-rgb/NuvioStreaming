@@ -16,13 +16,18 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-        # postinstall runs patch-package automatically
         
+      - name: Fix androidsvg duplicate class conflict
+        run: |
+          # Replace androidsvg with androidsvg-aar in react-native-fast-image
+          sed -i 's/implementation "com.caverock:androidsvg:1.4"/implementation "com.caverock:androidsvg-aar:1.4"/g' node_modules/@d11/react-native-fast-image/android/build.gradle
+          echo "Fixed androidsvg dependency in @d11/react-native-fast-image"
+          
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
