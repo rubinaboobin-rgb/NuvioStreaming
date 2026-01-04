@@ -21,6 +21,7 @@ jobs:
           
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+        # postinstall runs patch-package automatically
         
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -31,8 +32,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Skip expo prebuild - use existing android folder from repo
-      # This preserves our gradle fixes for duplicate class issues
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean
         
       - name: Build Android APK
         run: |
