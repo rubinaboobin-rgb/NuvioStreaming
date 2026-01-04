@@ -28,10 +28,9 @@ allprojects {
     maven { url 'https://www.jitpack.io' }
   }
   
-  // Exclude BOTH androidsvg variants to prevent duplicate classes
+  // Only exclude the JAR version, keep AAR for react-native-fast-image
   configurations.all {
     exclude group: 'com.caverock', module: 'androidsvg'
-    exclude group: 'com.caverock', module: 'androidsvg-aar'
   }
 }
 
