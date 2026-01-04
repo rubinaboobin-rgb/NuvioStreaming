@@ -27,11 +27,6 @@ allprojects {
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
   }
-  
-  // Only exclude the JAR version, keep AAR for react-native-fast-image
-  configurations.all {
-    exclude group: 'com.caverock', module: 'androidsvg'
-  }
 }
 
 apply plugin: "expo-root-project"
